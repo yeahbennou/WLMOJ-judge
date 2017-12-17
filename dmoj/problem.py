@@ -212,7 +212,7 @@ class TestCase(object):
                                           stderr=subprocess.PIPE)
 
         try:
-            input = self.problem.problem_data[self.config['in']] if self.config['in'] else None
+            input = self.problem.problem_data[self.config['in']] if gen.input_files and self.config['in'] else None
         except KeyError:
             input = None
         self._generated = list(map(self._normalize, proc.communicate(input)))
@@ -230,9 +230,13 @@ class TestCase(object):
     def input_data(self):
         gen = self.config.generator
 
+        generate = gen and (not self.config['out'] or self.config['generator_args'] or self.config['run_generator'])
+        if isinstance(gen, ConfigNode):
+            generate |= gen.source and gen.input_files
+
         # don't try running the generator if we specify an output file explicitly,
         # otherwise generator may segfault and we end up returning the output file anyway
-        if gen and not self.config['out']:
+        if generate:
             if self._generated is None:
                 self._run_generator(gen, args=self.config.generator_args)
             if self._generated[0]:
