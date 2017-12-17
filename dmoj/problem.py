@@ -173,7 +173,7 @@ class TestCase(object):
         args = args or []
 
         # whether or not we should pipe in input files
-        input_files = False
+        input_files = True
 
         # resource limits on how to run the generator
         time_limit = 20  # 20 seconds
