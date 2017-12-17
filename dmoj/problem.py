@@ -172,6 +172,9 @@ class TestCase(object):
         flags = []
         args = args or []
 
+        # whether or not we should pipe in input files
+        input_files = False
+
         # resource limits on how to run the generator
         time_limit = 20  # 20 seconds
         memory_limit = 524288  # and 512mb of memory
@@ -189,6 +192,8 @@ class TestCase(object):
 
             time_limit = gen.time_limit or time_limit
             memory_limit = gen.memory_limit or memory_limit
+
+            input_files = gen.input_files or input_files
 
             # Optionally allow disabling the sandbox
             if gen.use_sandbox is not None:
@@ -212,7 +217,7 @@ class TestCase(object):
                                           stderr=subprocess.PIPE)
 
         try:
-            input = self.problem.problem_data[self.config['in']] if gen.input_files and self.config['in'] else None
+            input = self.problem.problem_data[self.config['in']] if input_files and self.config['in'] else None
         except KeyError:
             input = None
         self._generated = list(map(self._normalize, proc.communicate(input)))
