@@ -15,7 +15,7 @@ import six
 from six.moves import range
 
 from dmoj.cptbox._cptbox import *
-from dmoj.cptbox.handlers import DISALLOW, _CALLBACK
+from dmoj.cptbox.handlers import ALLOW, DISALLOW, _CALLBACK
 from dmoj.cptbox.syscalls import translator, SYSCALL_COUNT, by_id
 from dmoj.error import InternalError
 from dmoj.utils.communicate import safe_communicate as _safe_communicate
@@ -172,6 +172,7 @@ class SecurePopen(six.with_metaclass(SecurePopenMeta, Process)):
 
         self._security = security
         self._callbacks = [None] * MAX_SYSCALL_NUMBER
+        self._syscall_whitelist = [False] * MAX_SYSCALL_NUMBER
         if security is None:
             self._trace_syscalls = False
         else:
@@ -180,7 +181,9 @@ class SecurePopen(six.with_metaclass(SecurePopenMeta, Process)):
                 call = translator[i][index]
                 if call is None:
                     continue
-                if not isinstance(handler, int):
+                if isinstance(handler, int):
+                    self._syscall_whitelist[call] = handler == ALLOW
+                else:
                     if not callable(handler):
                         raise ValueError('Handler not callable: ' + handler)
                     self._callbacks[call] = handler
@@ -198,10 +201,13 @@ class SecurePopen(six.with_metaclass(SecurePopenMeta, Process)):
 
     def wait(self):
         self._died.wait()
-        if self.returncode == 204 and not self.was_initialized:
-            raise RuntimeError('failed to ptrace child, check Yama config '
-                               '(https://www.kernel.org/doc/Documentation/security/Yama.txt, should be '
-                               'at most 1); if running in Docker, must run container with `--privileged`')
+        if not self.was_initialized:
+            if self.returncode == 203:
+                raise RuntimeError('failed to set up seccomp policy')
+            elif self.returncode == 204:
+                raise RuntimeError('failed to ptrace child, check Yama config '
+                                   '(https://www.kernel.org/doc/Documentation/security/Yama.txt, should be '
+                                   'at most 1); if running in Docker, must run container with `--privileged`')
         return self.returncode
 
     def poll(self):
