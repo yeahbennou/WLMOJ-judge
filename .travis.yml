@@ -22,6 +22,7 @@ addons:
     - coffeescript
     - binutils-multiarch
     - libc6-dev-i386
+    - libseccomp-dev
     - nasm
     - open-cobol
     - lua5.2
