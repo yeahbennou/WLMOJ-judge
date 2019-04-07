@@ -41,3 +41,7 @@ void setup() {
     def create_files(self, problem_id, source_code, *args, **kwargs):
         code = template.replace(b'{code}', source_code)
         super(Executor, self).create_files(problem_id, code, *args, **kwargs)
+
+    @classmethod
+    def get_runtime_versions(cls):
+        return ('pde', (3, 5, 3)),
