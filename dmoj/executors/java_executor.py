@@ -34,6 +34,11 @@ with open(os.path.join(os.path.dirname(__file__), 'java-security.policy')) as po
 
 
 def find_class(source):
+    # This step is necessary because of Unicode classnames
+    try:
+        source = utf8text(source)
+    except UnicodeDecodeError:
+        raise CompileError('Your UTF-8 is bad, and you should feel bad')
     source = reinline_comment.sub('', restring.sub('', recomment.sub('', source)))
     class_name = reclass.search(source)
     if class_name is None:
@@ -199,13 +204,13 @@ class JavaExecutor(CompiledExecutor):
 
 
 class JavacExecutor(JavaExecutor):
+    def __init__(self, problem_id, main_source, **kwargs):
+        super(JavaExecutor, self).__init__(problem_id, main_source, **kwargs)
+        self.source_dict = kwargs.get('aux_sources', {})
+
     def create_files(self, problem_id, source_code, *args, **kwargs):
         super(JavacExecutor, self).create_files(problem_id, source_code, *args, **kwargs)
-        # This step is necessary because of Unicode classnames
-        try:
-            source_code = utf8text(source_code)
-        except UnicodeDecodeError:
-            raise CompileError('Your UTF-8 is bad, and you should feel bad')
+
         class_name = find_class(source_code)
         self._code = self._file('%s.java' % class_name.group(1))
         try:
@@ -218,11 +223,19 @@ class JavacExecutor(JavaExecutor):
             raise
         self._class_name = class_name.group(1)
 
+        self.source_paths = []
+        for name, source in self.source_dict.items():
+            if '.' not in name:
+                name += self.ext
+            with open(self._file(name), 'wb') as fo:
+                fo.write(utf8bytes(source))
+            self.source_paths.append(name)
+
     def get_compile_args(self):
-        return [self.get_compiler(), '-Xlint', '-encoding', 'UTF-8', self._code]
+        return [self.get_compiler(), '-Xlint', '-encoding', 'UTF-8', self._code] + self.source_paths
 
     def handle_compile_error(self, output):
-        if b'is public, should be declared in a file named' in utf8bytes(output):
+        if b'is public, should be declared in a file named' in output:
             raise CompileError('You are a troll. Trolls are not welcome. '
                                'As a judge, I sentence your code to death.\n')
         raise CompileError(output)
